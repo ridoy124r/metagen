@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MetaGen AI Data Generator</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    MetaGen — AI Data Generator
+  </div>
+
+  <div class="badge">
+  Vision · AI Powered
+  </div>
+</header>
+
+<main>
+
+  <!-- SETTINGS -->
+  <div class="settings-bar">
+
+    <div>
+      <label>Platform</label>
+
+      <select id="platform">
+        <option>Adobe Stock</option>
+        <option>Shutterstock</option>
+        <option>Getty Images</option>
+        <option>iStock</option>
+        <option>Alamy</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Category</label>
+
+      <select id="category">
+        <option>Business / Finance</option>
+        <option>Technology</option>
+        <option>People / Lifestyle</option>
+        <option>Nature / Outdoors</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Extra Context</label>
+
+      <input
+        type="text"
+        id="extra"
+        placeholder="golden hour, studio, cinematic..."
+      />
+    </div>
+
+    <div class="analyze-wrap">
+      <button
+        class="btn btn-accent"
+        id="analyzeBtn"
+        disabled
+      >
+        ⚡ Analyze All
+      </button>
+    </div>
+
+  </div>
+
+  <!-- UPLOAD ZONE -->
+  <div
+    class="upload-zone"
+    id="dropZone"
+  >
+    <div class="upload-icon">🖼️</div>
+
+    <div class="upload-title">
+      Drop images here
+    </div>
+
+    <div class="upload-sub">
+      or browse files
+    </div>
+
+    <input
+      type="file"
+      id="fileInput"
+      multiple
+      accept="image/*"
+    />
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap" id="progressWrap">
+
+    <div class="progress-label">
+      <span id="progressText">Analyzing...</span>
+      <span id="progressNum">0 / 0</span>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="action-bar" id="actionBar">
+
+    <div class="file-count" id="fileCount">
+      0 Images
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-sm" id="clearBtn">
+        Clear
+      </button>
+
+      <button class="btn btn-sm" id="csvBtn">
+        Export CSV
+      </button>
+    </div>
+
+  </div>
+
+  <!-- IMAGE GRID -->
+  <div class="image-grid" id="imageGrid">
+
+    <div class="empty-state">
+      No images uploaded yet.
+    </div>
+
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
