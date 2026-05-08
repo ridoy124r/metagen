@@ -12,6 +12,24 @@
 </head>
 <body>
 
+<!-- API KEY SETUP MODAL -->
+<div id="setupModal" class="setup-modal hidden">
+  <div class="setup-content">
+    <h2>MetaGen Setup</h2>
+    <p>Please enter your Gemini API key to get started:</p>
+    <div class="setup-input-group">
+      <input 
+        type="password" 
+        id="apiKeyInput" 
+        placeholder="Paste your VITE_GEMINI_API_KEY here"
+        autocomplete="off"
+      />
+      <button id="setupButton" class="btn btn-accent">Save & Continue</button>
+    </div>
+    <p class="setup-hint">Your API key is stored locally in your browser and never sent to any server.</p>
+  </div>
+</div>
+
 <header>
   <div class="logo">
     <div class="logo-dot"></div>

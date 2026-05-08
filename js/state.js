@@ -1,4 +1,3 @@
-// All images live here. Import this in every other module.
 export let images = [];
 export let idCounter = 0;
 export const nextId = () => ++idCounter;

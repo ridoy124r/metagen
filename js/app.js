@@ -1,9 +1,16 @@
-import { APP_NAME, API_KEY, DEFAULT_CATEGORY, DEFAULT_PLATFORM } from '../config.js';
+import { APP_NAME, initializeAPIKey, getAPIKey, setAPIKey, DEFAULT_CATEGORY, DEFAULT_PLATFORM } from '../config.js';
+import { initializeSetup } from './setup.js';
 import { handleFiles, onDragOver, onDragLeave, onDrop } from './upload.js';
 import { images, removeImage, resetState } from './state.js';
 import { render } from './render.js';
 import { callAPI } from './api.js';
 import { exportCSV } from './export.js';
+
+// Initialize API key from .env file
+await initializeAPIKey();
+
+// Show setup modal if API key is missing
+await initializeSetup();
 
 const platformEl = document.getElementById('platform');
 const categoryEl = document.getElementById('category');
@@ -75,8 +82,9 @@ async function retryOne(id) {
 }
 
 async function analyzeAll() {
-  if (!API_KEY || API_KEY === 'YOUR_GEMINI_KEY_HERE') {
-    showToast('Add your Gemini API key in config.js first.');
+  const apiKey = getAPIKey();
+  if (!apiKey || apiKey.trim() === '') {
+    showToast('API key missing. Please reload the page.');
     return;
   }
 
@@ -148,6 +156,13 @@ function showToast(message) {
 window.addEventListener('beforeunload', () => {
   images.forEach(img => img.objectURL && URL.revokeObjectURL(img.objectURL));
 });
+
+// Export setAPIKey to window for console access
+window.setAPIKey = (key) => {
+  setAPIKey(key);
+  localStorage.setItem('VITE_GEMINI_API_KEY', key);
+  console.log('✓ API key set successfully');
+};
 
 platformEl.addEventListener('change', updateUI);
 categoryEl.addEventListener('change', updateUI);

@@ -4,6 +4,12 @@ import { retryOne } from './api.js';
 export function render() {
   const grid = document.getElementById("imageGrid");
   grid.innerHTML = "";
+  
+  if (images.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No images uploaded yet.</div>';
+    return;
+  }
+  
   images.forEach(img => grid.appendChild(buildCard(img)));
 }
 

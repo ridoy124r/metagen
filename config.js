@@ -1,19 +1,57 @@
 export const APP_NAME = "MetaGen";
 export const MODEL = "gemini-2.5-flash";
 
-// Read API key from environment variable or use default
-// For Vercel: Set VITE_GEMINI_API_KEY in Environment Variables
-// For local: Create .env file with VITE_GEMINI_API_KEY=your_key_here
-const getApiKey = () => {
-  // Try to get from window (for Vercel serverless function injection)
-  if (typeof window !== 'undefined' && window.METAGEN_API_KEY) {
-    return window.METAGEN_API_KEY;
-  }
-  // Fallback to default (will be overridden by Vercel env vars if using build tool)
-  return "AIzaSyAFWyFL0XAstkAmi6ALVJd_S2AIQoWG8sk";
-};
+// API key will be loaded at runtime from .env file
+let API_KEY = "";
 
-export const API_KEY = getApiKey();
+// Load API key from .env file at runtime
+export async function initializeAPIKey() {
+  try {
+    // Try to fetch the .env file from the root
+    const paths = ['.env', '/.env', '../.env'];
+    
+    for (const path of paths) {
+      try {
+        const response = await fetch(path);
+        if (response.ok) {
+          const envContent = await response.text();
+          console.log("Loaded .env file from:", path);
+          const match = envContent.match(/VITE_GEMINI_API_KEY\s*=\s*(.+?)(?:\n|$)/);
+          if (match && match[1]) {
+            const key = match[1].trim();
+            if (key) {
+              API_KEY = key;
+              console.log("✓ API key loaded successfully");
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        // Continue to next path
+      }
+    }
+    
+    // If .env file couldn't be loaded, try localStorage
+    const storedKey = localStorage.getItem('VITE_GEMINI_API_KEY');
+    if (storedKey) {
+      API_KEY = storedKey;
+      console.log("✓ API key loaded from localStorage");
+      return;
+    }
+    
+    console.warn("⚠ API key not found in .env file or localStorage");
+  } catch (err) {
+    console.warn("Error initializing API key:", err);
+  }
+}
+
+export function getAPIKey() {
+  return API_KEY;
+}
+
+export function setAPIKey(key) {
+  API_KEY = key;
+}
 
 export const MAX_FILES = 20;
 export const MAX_KEYWORDS = {

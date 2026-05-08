@@ -1,9 +1,14 @@
-import { API_KEY, MODEL, GENERATION_CONFIG, MAX_KEYWORDS } from '../config.js';
+import { getAPIKey, MODEL, GENERATION_CONFIG, MAX_KEYWORDS } from '../config.js';
 import { getImage } from './state.js';
 
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(API_KEY)}`;
-
 export async function callAPI(img, { platform, category, extra }) {
+  const apiKey = getAPIKey();
+  if (!apiKey) {
+    throw new Error("API key not loaded. Please add VITE_GEMINI_API_KEY to .env file.");
+  }
+  
+  const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  
   const target = getImage(img.id) || img;
 
   if (!target.base64) {
@@ -34,7 +39,6 @@ export async function callAPI(img, { platform, category, extra }) {
   ].join("\n");
 
   console.log("Starting API call for image", img.id);
-  console.log("API URL:", API_URL);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout
