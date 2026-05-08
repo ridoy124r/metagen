@@ -57,6 +57,7 @@ export const MAX_FILES = 20;
 export const MAX_KEYWORDS = {
 	default: 50,
 	Alamy: 30,
+	Freepik: 40,
 };
 
 export const DEFAULT_PLATFORM = "Adobe Stock";
