@@ -24,35 +24,66 @@ export function exportCSV(platform) {
 }
 
 function generateAdobeStockCSV(done) {
-  // Adobe Stock format
-  const headers = ["Filename", "Title", "Description", "Keywords", "Category", "Mood"];
+  // Adobe Stock format - optimized for their submission and search platform
+  // Reference: Adobe Stock contributor guidelines for CSV bulk upload
+  const headers = [
+    "Filename",
+    "Title",
+    "Description",
+    "Keywords",
+    "Category",
+    "Mood",
+    "Orientation",
+    "Image Model"
+  ];
   
   const rows = done.map(({ file, meta: m }) => [
     file.name,
     m.title,
     m.description,
-    // Adobe Stock prefers space-separated keywords
+    // Adobe Stock prefers space-separated keywords (max 10-15 per image)
     (m.keywords || []).join(" "),
-    m.mood || "",
-    m.suggested_use || ""
+    m.mood || "General", // Primary category
+    m.mood || "Neutral", // Mood/atmosphere
+    detectOrientation(file.name), // Auto-detect orientation
+    m.suggested_use || "Stock" // Model/subject classification
   ].map(v => `"${String(v || "").replace(/"/g, '""')}"`));
 
   return [headers.map(h => `"${h}"`).join(","), ...rows.map(r => r.join(","))].join("\n");
 }
 
+// Helper: Detect image orientation from filename or default
+function detectOrientation(filename) {
+  const lower = filename.toLowerCase();
+  if (lower.includes("landscape") || lower.includes("wide")) return "Landscape";
+  if (lower.includes("portrait") || lower.includes("tall")) return "Portrait";
+  if (lower.includes("square")) return "Square";
+  // Could be enhanced to check actual image dimensions if file object has them
+  return "Landscape"; // Default assumption
+}
+
 function generateFreepikCSV(done) {
-  // Freepik format - more flexible with keywords
-  const headers = ["Filename", "Title", "Description", "Tags", "License Type", "Category"];
+  // Freepik format - optimized for successful upload and discoverability
+  const headers = [
+    "Filename",
+    "Title",
+    "Description",
+    "Tags",
+    "Category"
+  ];
   
-  const rows = done.map(({ file, meta: m }) => [
-    file.name,
-    m.title,
-    m.description,
-    // Freepik accepts comma-separated or space-separated tags
-    (m.keywords || []).join(", "),
-    "Free", // Default license type
-    m.mood || "General"
-  ].map(v => `"${String(v || "").replace(/"/g, '""')}"`));
+  const rows = done.map(({ file, meta: m }) => {
+    // Freepik requires comma-separated tags
+    const tags = (m.keywords || []).join(", ");
+    
+    return [
+      file.name,
+      m.title,
+      m.description,
+      tags,
+      m.mood || "General"
+    ].map(v => `"${String(v || "").replace(/"/g, '""')}"`);
+  });
 
   return [headers.map(h => `"${h}"`).join(","), ...rows.map(r => r.join(","))].join("\n");
 }
