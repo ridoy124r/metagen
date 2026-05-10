@@ -43,7 +43,7 @@ function generateAdobeStockCSV(done) {
     m.description,
     // Adobe Stock prefers space-separated keywords (max 10-15 per image)
     (m.keywords || []).join(" "),
-    m.mood || "General", // Primary category
+    m.category || m.mood || "General", // Use AI-detected category, fallback to mood
     m.mood || "Neutral", // Mood/atmosphere
     detectOrientation(file.name), // Auto-detect orientation
     m.suggested_use || "Stock" // Model/subject classification
@@ -82,7 +82,10 @@ function generateFreepikCSV(done) {
     const tags = (m.keywords && m.keywords.length > 0) 
       ? (m.keywords || []).join(", ")
       : extractTitleKeywords(title);
-    const category = mapToFreepikCategory(m.mood || m.suggested_use || "General");
+    // PRIORITY: Use AI-detected category from metadata, fallback to content analysis
+    const category = m.category 
+      ? String(m.category).trim()
+      : detectCategoryFromContent(title, description, m.mood, m.suggested_use);
     
     return [
       filename,
@@ -125,86 +128,161 @@ function cleanField(value, maxLength) {
   return cleaned;
 }
 
-// Helper: Map mood/suggested_use to valid Freepik categories
+// Helper: Smart category detection based on title, description, mood, and keywords
+function detectCategoryFromContent(title, description, mood, suggestedUse) {
+  const content = (title + " " + description).toLowerCase();
+  
+  // Category keyword patterns with weights
+  const categoryPatterns = {
+    "Business": {
+      keywords: ["business", "office", "professional", "corporate", "work", "conference", "meeting", 
+                 "executive", "employee", "entrepreneur", "finance", "financial", "presentation",
+                 "laptop", "workspace", "desk", "manager", "team", "company", "corporate", "report",
+                 "analysis", "strategy", "marketing", "sales", "entrepreneur", "startup"],
+      weight: 0,
+      boost: 0
+    },
+    "Design": {
+      keywords: ["design", "graphic", "creative", "modern", "aesthetic", "pattern", "layout",
+                 "color", "art", "illustration", "style", "contemporary", "digital", "vector",
+                 "designer", "mockup", "brand", "web", "ui", "interface", "creative", "design system"],
+      weight: 0,
+      boost: 0
+    },
+    "Nature": {
+      keywords: ["nature", "landscape", "outdoor", "mountain", "tree", "forest", "sky", "water",
+                 "beach", "ocean", "sunset", "sunrise", "plant", "flower", "garden", "wildlife",
+                 "animal", "natural", "scenic", "environment", "green", "field", "river", "lake"],
+      weight: 0,
+      boost: 0
+    },
+    "People": {
+      keywords: ["woman", "man", "person", "people", "human", "portrait", "face", "girl", "boy",
+                 "family", "child", "adult", "people", "group", "team", "friends", "couple",
+                 "person", "individual", "character", "smile", "expression", "emotion"],
+      weight: 0,
+      boost: 0
+    },
+    "Technology": {
+      keywords: ["technology", "digital", "computer", "tech", "electronic", "gadget", "phone",
+                 "smartphone", "tablet", "software", "network", "cyber", "internet", "robot",
+                 "ai", "machine", "innovation", "tech", "device", "data", "server", "circuit"],
+      weight: 0,
+      boost: 0
+    },
+    "Health": {
+      keywords: ["health", "fitness", "wellness", "yoga", "exercise", "sport", "medical", "doctor",
+                 "hospital", "healthcare", "diet", "nutrition", "gym", "trainer", "mental",
+                 "meditation", "wellbeing", "therapy", "healthy", "athlete", "training", "yoga"],
+      weight: 0,
+      boost: 0
+    },
+    "Food": {
+      keywords: ["food", "cooking", "recipe", "kitchen", "cook", "meal", "dish", "restaurant",
+                 "ingredient", "beverage", "coffee", "drink", "cuisine", "culinary", "eat",
+                 "chef", "bake", "dessert", "fruit", "vegetable", "bread", "cheese"],
+      weight: 0,
+      boost: 0
+    },
+    "Travel": {
+      keywords: ["travel", "trip", "tourist", "destination", "tourism", "journey", "explore",
+                 "adventure", "passport", "luggage", "hotel", "vacation", "holiday", "tour",
+                 "backpacker", "world", "map", "sightseeing"],
+      weight: 0,
+      boost: 0
+    },
+    "Education": {
+      keywords: ["education", "learning", "study", "school", "student", "teacher", "class",
+                 "university", "college", "course", "training", "lesson", "knowledge", "academic",
+                 "book", "reading", "library", "tutorial", "learn"],
+      weight: 0,
+      boost: 0
+    },
+    "Abstract": {
+      keywords: ["abstract", "texture", "pattern", "geometric", "shape", "color", "background",
+                 "minimal", "simple", "artistic", "creative", "gradient", "blend", "effect"],
+      weight: 0,
+      boost: 0
+    }
+  };
+
+  // Score each category based on keyword matches
+  for (const [category, data] of Object.entries(categoryPatterns)) {
+    let score = 0;
+    
+    // Count keyword matches in content
+    for (const keyword of data.keywords) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'g');
+      const matches = (content.match(regex) || []).length;
+      score += matches;
+    }
+    
+    categoryPatterns[category].weight = score;
+  }
+
+  // Apply mood/suggested_use as boosts
+  const moodBoost = mapToFreepikCategory(mood || suggestedUse || "");
+  if (moodBoost && categoryPatterns[moodBoost]) {
+    categoryPatterns[moodBoost].boost += 3; // Boost mood-based category
+  }
+
+  // Find category with highest score
+  let bestCategory = "Design"; // Default fallback
+  let bestScore = 0;
+  
+  for (const [category, data] of Object.entries(categoryPatterns)) {
+    const totalScore = data.weight + data.boost;
+    if (totalScore > bestScore) {
+      bestScore = totalScore;
+      bestCategory = category;
+    }
+  }
+
+  // If no match found, fall back to mood-based detection
+  if (bestScore === 0) {
+    return mapToFreepikCategory(mood || suggestedUse || "General");
+  }
+
+  return bestCategory;
+}
+
+// Helper: Map mood/suggested_use to valid Freepik categories (fallback/boost)
 function mapToFreepikCategory(value) {
   const categoryMap = {
-    // Map common moods/uses to Freepik valid categories
-    "professional": "Business",
-    "business": "Business",
-    "corporate": "Business",
-    "modern": "Design",
-    "creative": "Design",
-    "contemporary": "Design",
-    "nature": "Nature",
-    "outdoor": "Nature",
-    "landscape": "Nature",
-    "technology": "Technology",
-    "tech": "Technology",
-    "digital": "Technology",
-    "health": "Health",
-    "fitness": "Health",
-    "wellness": "Health",
-    "yoga": "Health",
-    "people": "People",
-    "person": "People",
-    "woman": "People",
-    "man": "People",
-    "portrait": "People",
-    "travel": "Travel",
-    "food": "Food",
-    "cooking": "Food",
-    "abstract": "Abstract",
-    "texture": "Abstract",
-    "education": "Education",
-    "learning": "Education",
-    "business use": "Business",
-    "blog featured": "Design",
-    "social media": "Design",
-    "marketing": "Business",
-    "presentation": "Business"
+    "professional": "Business", "business": "Business", "corporate": "Business",
+    "modern": "Design", "creative": "Design", "contemporary": "Design",
+    "nature": "Nature", "outdoor": "Nature", "landscape": "Nature",
+    "technology": "Technology", "tech": "Technology", "digital": "Technology",
+    "health": "Health", "fitness": "Health", "wellness": "Health", "yoga": "Health",
+    "people": "People", "person": "People", "woman": "People", "man": "People", "portrait": "People",
+    "travel": "Travel", "food": "Food", "cooking": "Food",
+    "abstract": "Abstract", "texture": "Abstract",
+    "education": "Education", "learning": "Education",
+    "business use": "Business", "blog featured": "Design", "social media": "Design",
+    "marketing": "Business", "presentation": "Business"
   };
   
   const lower = String(value || "").toLowerCase().trim();
+  if (categoryMap[lower]) return categoryMap[lower];
   
-  // Try exact match first
-  if (categoryMap[lower]) {
-    return categoryMap[lower];
-  }
-  
-  // Try partial match (longest match wins for accuracy)
-  let bestMatch = null;
-  let bestLength = 0;
+  // Partial match
   for (const [key, category] of Object.entries(categoryMap)) {
-    if (lower.includes(key) && key.length > bestLength) {
-      bestMatch = category;
-      bestLength = key.length;
-    }
-  }
-  if (bestMatch) {
-    return bestMatch;
+    if (lower.includes(key)) return category;
   }
   
-  // Deterministic fallback based on first character
-  const validCategories = [
-    "Design", "Business", "Nature", "Technology", 
-    "People", "Health", "Education", "Abstract"
-  ];
-  
-  // Use character code of first letter for deterministic selection
-  const charCode = lower.charCodeAt(0) || 0;
-  const index = charCode % validCategories.length;
-  return validCategories[index];
+  return null; // No match
 }
 
 function generateGenericCSV(done, platform) {
   // Generic format for other platforms
-  const headers = ["Filename", "Title", "Description", "Keywords", "Mood", "Suggested Use", "Platform"];
+  const headers = ["Filename", "Title", "Description", "Keywords", "Category", "Mood", "Suggested Use", "Platform"];
   
   const rows = done.map(({ file, meta: m }) => [
     file.name,
     m.title,
     m.description,
     (m.keywords || []).join("; "),
+    m.category || "General",
     m.mood || "",
     m.suggested_use || "",
     platform

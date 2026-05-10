@@ -17,6 +17,9 @@ export async function callAPI(img, { platform, category, extra }) {
 
   const kwLimit = MAX_KEYWORDS[platform] || MAX_KEYWORDS.default;
 
+  // Build category context for better AI guidance
+  const categoryContext = buildCategoryContext(category);
+
   const prompt = [
     "You are a senior stock media SEO specialist.",
     "Analyze the image carefully and generate HIGHLY DISCOVERABLE metadata optimized for stock platforms.",
@@ -26,7 +29,8 @@ export async function callAPI(img, { platform, category, extra }) {
     '  "description": "string",',
     '  "keywords": ["string"],',
     '  "mood": "string",',
-    '  "suggested_use": "string"',
+    '  "suggested_use": "string",',
+    '  "category": "string"',
     '}',
     '',
     '=== SEO OPTIMIZATION RULES ===',
@@ -56,9 +60,11 @@ export async function callAPI(img, { platform, category, extra }) {
     '  • NO brand names, trademarks, duplicates, or vague terms',
     '  • Include compound keywords naturally',
     '',
-    'MOOD (1 short phrase):',
+    'MOOD (1-3 words, CRITICAL for category detection):',
+    '  • Should hint at image category for auto-classification',
     '  • Primary emotional/style descriptor',
-    '  • Examples: "modern professional", "casual creative", "corporate formal"',
+    `  • CATEGORY HINT: ${categoryContext}`,
+    '  • Examples: "modern professional", "casual creative", "serene natural"',
     '  • Directly impacts platform discoverability',
     '',
     'SUGGESTED_USE (1 specific use case):',
@@ -66,8 +72,20 @@ export async function callAPI(img, { platform, category, extra }) {
     '  • Examples: "Blog featured image", "Social media marketing", "Business presentation"',
     '  • Increases click-through probability',
     '',
-    `CONTEXT: platform=${platform}; category=${category}${extra ? `; extra=${extra}` : ''}`,
-    'CRITICAL: Output must be ONLY valid JSON, nothing else.'
+    'CATEGORY (MUST be one of these 10 values only):',
+    '  • AUTO-DETECT the primary category for this image',
+    '  • VALID VALUES ONLY: Business | Design | Nature | People | Technology | Health | Education | Food | Travel | Abstract',
+    '  • Analysis: Examine image content, colors, composition, subjects',
+    '  • Choose category that BEST matches primary content',
+    '  • Examples:',
+    '    - Office scene with professionals → Business',
+    '    - Mountain sunset landscape → Nature',
+    '    - Woman smiling at camera → People',
+    '    - Computer/tech objects → Technology',
+    `  • Suggested: ${categoryContext.split("indicate ")[1]?.split(" category")[0] || "Choose based on content"}`,
+    '',
+    `CONTEXT: platform=${platform}; user_category=${category}${extra ? `; extra=${extra}` : ''}`,
+    'CRITICAL: Output must be ONLY valid JSON with ALL 6 fields, nothing else.'
   ].join("\n");
 
   console.log("Starting API call for image", img.id);
@@ -213,6 +231,9 @@ function parseJson(text, kwLimit) {
     // Normalize and prioritize keywords for SEO
     parsed.keywords = normalizeKeywords(parsed.keywords, kwLimit);
     
+    // Validate and normalize category from AI
+    parsed.category = validateCategory(parsed.category || "Design");
+    
     return parsed;
   } catch (e) {
     console.error("JSON Parse Error:", e, "Text was:", text);
@@ -273,4 +294,42 @@ function normalizeKeywords(keywords, kwLimit) {
   }
 
   return output;
+}
+
+// Helper: Build category context for AI guidance on mood generation
+function buildCategoryContext(category) {
+  const categoryMoodHints = {
+    "Business": 'Use mood with "professional", "corporate", "business" to indicate Business category',
+    "Design": 'Use mood with "modern", "creative", "aesthetic", "contemporary" to indicate Design category',
+    "Nature": 'Use mood with "natural", "scenic", "outdoor" to indicate Nature category',
+    "People": 'Use mood with "portrait", "human", "personal" to indicate People category',
+    "Technology": 'Use mood with "digital", "tech", "innovative" to indicate Technology category',
+    "Health": 'Use mood with "wellness", "healthy", "fitness" to indicate Health category',
+    "Education": 'Use mood with "educational", "learning", "academic" to indicate Education category',
+    "Food": 'Use mood with "culinary", "appetizing", "gastronomic" to indicate Food category',
+    "Travel": 'Use mood with "adventurous", "exploratory", "destination" to indicate Travel category',
+    "Abstract": 'Use mood with "artistic", "abstract", "geometric" to indicate Abstract category'
+  };
+
+  return categoryMoodHints[category] || 'Generate mood that best describes the image\'s emotional/style characteristics';
+}
+
+// Helper: Validate category is one of the 10 valid Freepik categories
+function validateCategory(category) {
+  const validCategories = [
+    "Business", "Design", "Nature", "People", "Technology", 
+    "Health", "Education", "Food", "Travel", "Abstract"
+  ];
+  
+  const normalized = String(category || "Design").trim();
+  
+  // Check exact match (case-insensitive)
+  const match = validCategories.find(cat => cat.toLowerCase() === normalized.toLowerCase());
+  if (match) {
+    return match; // Return with proper case
+  }
+  
+  // If not a valid category, return default
+  console.warn(`Invalid category "${category}" from AI, using "Design" as default`);
+  return "Design";
 }
