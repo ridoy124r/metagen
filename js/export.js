@@ -10,6 +10,8 @@ export function exportCSV(platform) {
     csv = generateAdobeStockCSV(done);
   } else if (platform === "Freepik") {
     csv = generateFreepikCSV(done);
+  } else if (platform === "Magnific") {
+    csv = generateMagnificCSV(done);
   } else {
     csv = generateGenericCSV(done, platform);
   }
@@ -51,8 +53,6 @@ function generateAdobeStockCSV(done) {
 
   return [headers.map(h => `"${h}"`).join(","), ...rows.map(r => r.join(","))].join("\n");
 }
-
-// Helper: Detect image orientation from filename or default
 function detectOrientation(filename) {
   const lower = filename.toLowerCase();
   if (lower.includes("landscape") || lower.includes("wide")) return "Landscape";
@@ -97,6 +97,38 @@ function generateFreepikCSV(done) {
   });
 
   return [headers.map(h => `"${h}"`).join(","), ...rows.map(r => r.join(","))].join("\n");
+}
+
+function generateMagnificCSV(done) {
+  // Magnific format - uses semicolon as field separator
+  // Reference: Magnific contributor CSV upload requirements
+  // Format: filename;title;keywords;[prompt];[model]
+  
+  const rows = done.map(({ file, meta: m }) => {
+    const filename = String(file.name || "").trim();
+    const title = cleanField(m.title || "Untitled", 100);
+    // Keywords separated by commas within the field
+    const keywords = (m.keywords && m.keywords.length > 0)
+      ? m.keywords.join(",")
+      : extractTitleKeywords(title);
+    // AI prompt (optional)
+    const prompt = m.prompt ? cleanField(m.prompt, 200) : "";
+    // Model used (optional) - e.g., "Midjourney 5", "DALL-E 3", "Stable Diffusion"
+    const model = m.suggested_use || m.model || "";
+    
+    // Wrap each field in single quotes for Magnific format
+    return [
+      `'${filename.replace(/'/g, "''")}'`,
+      `'${title.replace(/'/g, "''")}'`,
+      `'${keywords.replace(/'/g, "''")}'`,
+      `'${prompt.replace(/'/g, "''")}'`,
+      `'${model.replace(/'/g, "''")}'`
+    ].join(";");
+  });
+
+  // Magnific header: filename;title;keywords;prompt;model
+  const header = "'filename';'title';'keywords';'prompt';'model'";
+  return [header, ...rows].join("\n");
 }
 
 // Helper: Extract keywords from title if no keywords available
