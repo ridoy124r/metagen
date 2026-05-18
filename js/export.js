@@ -43,8 +43,8 @@ function generateAdobeStockCSV(done) {
     file.name,
     m.title,
     m.description,
-    // Adobe Stock prefers space-separated keywords (max 10-15 per image)
-    (m.keywords || []).join(" "),
+    // Adobe Stock prefers comma-separated keywords (max 10-15 per image)
+    (m.keywords || []).join(", "),
     m.category || m.mood || "General", // Use AI-detected category, fallback to mood
     m.mood || "Neutral", // Mood/atmosphere
     detectOrientation(file.name), // Auto-detect orientation
